@@ -11873,6 +11873,11 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
       updateBadgesAndCounters();
       lucide.createIcons();
     };
+    // Pull cloud updates across all devices
+      if (typeof pullAllFromGoogleSheets === 'function' && getGoogleSheetsUrl()) {
+        pullAllFromGoogleSheets();
+      }
+    };
   
 // ================= EXTRA DATA & MODULE EXTENSIONS =================
   appState.globalStateFilter = 'All';
