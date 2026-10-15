@@ -11873,11 +11873,6 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
       updateBadgesAndCounters();
       lucide.createIcons();
     };
-    // Pull cloud updates across all devices
-      if (typeof pullAllFromGoogleSheets === 'function' && getGoogleSheetsUrl()) {
-        pullAllFromGoogleSheets();
-      }
-    };
   
 // ================= EXTRA DATA & MODULE EXTENSIONS =================
   appState.globalStateFilter = 'All';
@@ -16651,11 +16646,9 @@ ${p.name}`, p.basePrice);
     const GS_STORAGE_URL_KEY = 'omnipulse_google_apps_script_url';
     const GS_STORAGE_AUTOSYNC_KEY = 'omnipulse_google_sheets_autosync';
 
-const DEFAULT_GS_URL = 'https://script.google.com/macros/s/AKfycbxvKkeCGIbQwL5Pd7OXTAwDufY1WFyN5rtYhvA0fr4TF9aW4rClfd38Jkej56ixtlMP/exec';
-
-window.getGoogleSheetsUrl = function() {
-  return localStorage.getItem(GS_STORAGE_URL_KEY) || DEFAULT_GS_URL;
-};
+    window.getGoogleSheetsUrl = function() {
+      return localStorage.getItem(GS_STORAGE_URL_KEY) || '';
+    };
 
     window.saveGoogleSheetsUrl = function() {
       const input = document.getElementById('googleSheetsScriptUrl');
