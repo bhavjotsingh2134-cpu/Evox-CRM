@@ -573,9 +573,9 @@
         </button>
 
         <!-- Google Sheets Two-Way Cloud Sync Engine -->
-        <button onclick="openModal('googleSheetsSyncModal')" class="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-all shadow-2xs" title="Link CRM to Google Sheets via Apps Script">
-          <i data-lucide="sheet" class="w-3.5 h-3.5 text-emerald-600"></i>
-          <span class="hidden md:inline">Google Sheets</span>
+        <button onclick="fetchCloudData()" class="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition-all shadow-2xs active:scale-95 cursor-pointer" title="Fetch & Sync Live Data from Google Sheets">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <span class="hidden md:inline">Sync Sheets</span>
         </button>
 
         <div class="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-0.5 sm:p-1 text-xs">
@@ -5879,6 +5879,90 @@
     // Global Data Stores initialized early to prevent TDZ
     var FIXED_PROJECTIONS_DATA = [];
     window.FIXED_PROJECTIONS_DATA = FIXED_PROJECTIONS_DATA;
+    // ================= GOOGLE SHEETS LIVE SYNC API =================
+  // Paste your Google Apps Script Web App Deployment URL here:
+  const GOOGLE_SCRIPT_API_URL = "https://script.google.com/macros/s/YOUR_ACTUAL_DEPLOYMENT_ID/exec";
+
+  // 1. PULL: Fetch latest data from Google Sheets on app load or refresh
+  window.fetchCloudData = async function() {
+    const syncPill = document.getElementById("networkSyncStatusPill");
+    const syncText = document.getElementById("networkStatusText");
+    if (syncText) syncText.innerText = "Syncing...";
+
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_API_URL);
+      const result = await response.json();
+
+      if (result.status === "success" && result.data && Object.keys(result.data).length > 0) {
+        const d = result.data;
+
+        // Restore state arrays
+        if (Array.isArray(d.leads)) appState.leads = d.leads;
+        if (Array.isArray(d.pds)) appState.pds = d.pds;
+        if (Array.isArray(d.sds)) appState.sds = d.sds;
+        if (Array.isArray(d.kols)) appState.kols = d.kols;
+        if (Array.isArray(d.meetings)) appState.meetings = d.meetings;
+        if (Array.isArray(d.calls)) appState.calls = d.calls;
+        if (Array.isArray(d.orders)) appState.orders = d.orders;
+        if (Array.isArray(d.mtp)) appState.mtp = d.mtp;
+        if (Array.isArray(d.inquiries)) appState.inquiries = d.inquiries;
+        if (Array.isArray(d.projections)) FIXED_PROJECTIONS_DATA = d.projections;
+
+        // Save into local backup
+        if (typeof saveLocalAppState === "function") saveLocalAppState();
+
+        // Refresh currently active view
+        if (typeof switchTab === "function") switchTab(appState.activeTab || 'dashboard');
+        if (typeof updateBadgesAndCounters === "function") updateBadgesAndCounters();
+
+        if (typeof showToast === "function") {
+          showToast("Live data synced from Google Sheets!", "success");
+        }
+      }
+    } catch (err) {
+      console.warn("[Cloud Sync] Failed to pull from Google Sheets, using offline storage:", err);
+      if (typeof loadLocalAppState === "function") loadLocalAppState();
+    } finally {
+      if (syncText) syncText.innerText = navigator.onLine ? "Online" : "Offline";
+    }
+  };
+
+  // 2. PUSH: Push updated state to Google Sheets whenever data changes
+  window.pushCloudData = async function() {
+    // 1. Save locally first for instant snappy response
+    if (typeof saveLocalAppState === "function") saveLocalAppState();
+
+    const payloadData = {
+      leads: appState.leads || [],
+      pds: appState.pds || [],
+      sds: appState.sds || [],
+      kols: appState.kols || [],
+      meetings: appState.meetings || [],
+      calls: appState.calls || [],
+      orders: appState.orders || [],
+      mtp: appState.mtp || [],
+      inquiries: appState.inquiries || [],
+      projections: window.FIXED_PROJECTIONS_DATA || []
+    };
+
+    try {
+      // mode: 'no-cors' with text/plain prevents browser preflight CORS blocks on Apps Script redirects
+      await fetch(GOOGLE_SCRIPT_API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify({ data: payloadData })
+      });
+
+      if (typeof showToast === "function") {
+        showToast("Cloud saved to Google Sheets!", "success");
+      }
+    } catch (err) {
+      console.error("[Cloud Sync] Push to Google Sheets failed:", err);
+    }
+  };
 
     const INDIAN_STATES = [
       "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
@@ -6691,6 +6775,10 @@
       updateBadgesAndCounters();
       if (typeof saveLocalAppState === "function") saveLocalAppState();
       if (typeof autoAppendToGoogleSheets === 'function') autoAppendToGoogleSheets('Leads', newLead);
+      showToast(`Lead '${newLead.name}' created successfully!`, 'success');
+      // PUSH TO GOOGLE SHEETS
+      pushCloudData();
+
       showToast(`Lead '${newLead.name}' created successfully!`, 'success');
     }
 
@@ -8820,6 +8908,8 @@
       renderMeetingsTable();
       renderDashboardBeatHub();
       updateBadgesAndCounters();
+      // PUSH TO GOOGLE SHEETS
+      pushCloudData();
       if (needsVerification) {
         showToast(`Visit scheduled with ${entity} and submitted for RSM verification!`, 'info');
       } else {
@@ -9014,6 +9104,8 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
       renderDashboardBeatHub();
       updateBadgesAndCounters();
       if (typeof saveLocalAppState === "function") saveLocalAppState();
+      // PUSH TO GOOGLE SHEETS
+      pushCloudData();
     }
 
     function getEntityPhone(name, type) {
@@ -9678,6 +9770,9 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
       if (typeof saveLocalAppState === "function") saveLocalAppState();
       renderCallsTable();
       updateBadgesAndCounters();
+      // PUSH TO GOOGLE SHEETS
+      pushCloudData();
+    }
       showToast(`Call scheduled with ${newCall.entity}!`, 'success');
     }
 
@@ -10673,6 +10768,7 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
           if (typeof saveLocalAppState === "function") saveLocalAppState();
           renderPendingRSMApprovals();
           updateBadgesAndCounters();
+          pushCloudData();
           showToast(`Direct PD '${name}' submitted to RSM for Approval! (Auto-demotes to SD if rejected)`, 'info');
           return;
         }
@@ -10722,6 +10818,7 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
         renderPDList();
         renderProjectionsTable();
         updateBadgesAndCounters();
+        pushCloudData();
         showToast(`Primary Distributor '${name}' directly onboarded & approved!`, 'success');
         switchTab('pd');
 
@@ -10774,6 +10871,7 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
         renderSDList();
         renderProjectionsTable();
         updateBadgesAndCounters();
+        pushCloudData();
         showToast(`Secondary Stockist (SD) '${name}' directly added to ${state} directory!`, 'success');
         switchTab('sd');
 
@@ -10814,6 +10912,7 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
         if (typeof saveLocalAppState === "function") saveLocalAppState();
         renderKOLList();
         updateBadgesAndCounters();
+        pushCloudData();
         showToast(`KOL Specialist '${name}' (${cat}) directly added to ${state} network!`, 'success');
         switchTab('kol');
       }
@@ -11872,6 +11971,11 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
       switchTab('dashboard');
       updateBadgesAndCounters();
       lucide.createIcons();
+
+      // PULL DATA FROM GOOGLE SHEETS
+      if (typeof fetchCloudData === 'function') {
+        fetchCloudData();
+      }
     };
   
 // ================= EXTRA DATA & MODULE EXTENSIONS =================
@@ -13565,6 +13669,7 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
 
     window.lastBaggedOrderId = newOrder.id;
     appState.orders.unshift(newOrder);
+    pushCloudData();
 
     // 1. LINKAGE: DYNAMIC PROJECTIONS REVENUE PACING UPDATE
     const cleanBuyer = (buyerName || '').toLowerCase();
