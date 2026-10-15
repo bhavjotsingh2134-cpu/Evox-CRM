@@ -9764,7 +9764,7 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
         notes: ''
       };
 
-      appState.calls.unshift(newCall);
+     appState.calls.unshift(newCall);
       closeModal('newCallModal');
       if (e && e.target && typeof e.target.reset === "function") e.target.reset();
       if (typeof saveLocalAppState === "function") saveLocalAppState();
@@ -9772,7 +9772,7 @@ Would you like to generate this distribution order now in the Orders Hub?`)) {
       updateBadgesAndCounters();
       // PUSH TO GOOGLE SHEETS
       pushCloudData();
-    }
+
       showToast(`Call scheduled with ${newCall.entity}!`, 'success');
     }
 
