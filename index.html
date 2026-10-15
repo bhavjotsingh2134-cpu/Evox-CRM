@@ -5897,17 +5897,18 @@
         const d = result.data;
 
         // Restore state arrays
-        if (Array.isArray(d.leads)) appState.leads = d.leads;
-        if (Array.isArray(d.pds)) appState.pds = d.pds;
-        if (Array.isArray(d.sds)) appState.sds = d.sds;
-        if (Array.isArray(d.kols)) appState.kols = d.kols;
-        if (Array.isArray(d.meetings)) appState.meetings = d.meetings;
-        if (Array.isArray(d.calls)) appState.calls = d.calls;
-        if (Array.isArray(d.orders)) appState.orders = d.orders;
-        if (Array.isArray(d.mtp)) appState.mtp = d.mtp;
-        if (Array.isArray(d.inquiries)) appState.inquiries = d.inquiries;
-        if (Array.isArray(d.projections)) FIXED_PROJECTIONS_DATA = d.projections;
-
+        if (!window.appState) window.appState = {};
+        if (Array.isArray(d.leads)) window.appState.leads = d.leads;
+        if (Array.isArray(d.pds)) window.appState.pds = d.pds;
+        if (Array.isArray(d.sds)) window.appState.sds = d.sds;
+        if (Array.isArray(d.kols)) window.appState.kols = d.kols;
+        if (Array.isArray(d.meetings)) window.appState.meetings = d.meetings;
+        if (Array.isArray(d.calls)) window.appState.calls = d.calls;
+        if (Array.isArray(d.orders)) window.appState.orders = d.orders;
+        if (Array.isArray(d.mtp)) window.appState.mtp = d.mtp;
+        if (Array.isArray(d.inquiries)) window.appState.inquiries = d.inquiries;
+        if (Array.isArray(d.projections)) window.FIXED_PROJECTIONS_DATA = d.projections;
+        
         // Save into local backup
         if (typeof saveLocalAppState === "function") saveLocalAppState();
 
